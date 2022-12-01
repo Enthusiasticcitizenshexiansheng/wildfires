@@ -1,5 +1,6 @@
 #include "bsp_i2c.h"
 
+
 /*
 //串口1-USART1
 #define DEBUG_USARTx             USART1   
@@ -88,6 +89,44 @@ void I2C_EE_Config(void)
 
 
 
+
+//向 EEPROM 写入一个字节
+//设备地址（固定） 内存地址 数据
+void EEPROM_Byte_Write(uint8_t addr,uint8_t data)
+{
+  //起始信号
+	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
+	
+	//检测 成功跳出
+	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
+  //EV5被检测到  为发送设备地址
+  
+  //发送  写方向
+	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Transmitter); 
+
+	
+	//检测时间  EV6  发送要操作的存储单元地址
+  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
+
+// 数据 或者 内存单元地址
+  I2C_SendData(EEPROM_I2C,addr);
+
+	
+//检测时间  EV8  
+  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+
+// 数据 或者 内存单元地址
+  I2C_SendData(EEPROM_I2C,addr);
+
+//检测EV8-2   
+ while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTED) == ERROR);
+
+
+//结束
+  I2C_GenerateSTOP(EEPROM_I2C,ENABLE);
+
+
+}
 
 
 
