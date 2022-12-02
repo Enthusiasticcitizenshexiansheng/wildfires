@@ -89,44 +89,197 @@ void I2C_EE_Config(void)
 
 
 
-
-//向 EEPROM 写入一个字节
-//设备地址（固定） 内存地址 数据
+ 
+//先的 向EEPROM写入一个字节
 void EEPROM_Byte_Write(uint8_t addr,uint8_t data)
-{
-  //起始信号
+	{
+	//1起始信号
 	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
 	
 	//检测 成功跳出
 	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
-  //EV5被检测到  为发送设备地址
   
+  //EV5被检测到  为发送设备地址
   //发送  写方向
 	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Transmitter); 
-
-	
-	//检测时间  EV6  发送要操作的存储单元地址
   while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
 
-// 数据 或者 内存单元地址
-  I2C_SendData(EEPROM_I2C,addr);
+
+	//检测时间  EV6  发送要操作的存储单元地址
+  // 数据 或者 内存单元地址
+    I2C_SendData(EEPROM_I2C,addr);
+    while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+		
+		//EV8_2
+	 I2C_SendData(EEPROM_I2C,data);
+   while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTED) == ERROR);
+		
+		//数据传输完成
+		  I2C_GenerateSTOP(EEPROM_I2C,ENABLE);
+		
+	}
+	
 
 	
-//检测时间  EV8  
-  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+// 1.2 向EEPROM写入多个字节（页写入）  每次不超8字节
+void EEPROM_Page_Write(uint8_t addr,uint8_t *data,uint8_t numByteToWrite)
+	{
+	//1起始信号
+	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
+	
+	//检测 成功跳出
+	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
+  
+  //EV5被检测到  为发送设备地址
+  //发送  写方向
+	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Transmitter); 
+  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
 
-// 数据 或者 内存单元地址
+
+	//检测时间  EV6  发送要操作的存储单元地址
+  // 数据 或者 内存单元地址
+    I2C_SendData(EEPROM_I2C,addr);
+    while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+		
+		
+		
+		
+		//有数据就不断循环
+		while(numByteToWrite){
+		//EV8_2   开始发数据
+	 I2C_SendData(EEPROM_I2C,*data);
+   while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTED) == ERROR);
+		data++;
+			numByteToWrite--;
+			}//数据传输完成
+	I2C_GenerateSTOP(EEPROM_I2C,ENABLE);
+	
+	}
+
+
+
+
+
+
+
+
+//向 EEPROM 写入一个字节
+//设备地址（固定） 内存地址 数据
+void EEPROM_Read(uint8_t addr,uint8_t *data,uint8_t numByteToRead)
+{
+  //1起始信号
+	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
+	
+
+	//检测 成功跳出
+	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
+  
+ 
+	//  写入时 有内部时序、容易造成自己写的时序不被响应
+  //发送  写方向 //EV5被检测到  为发送设备地址	
+	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Transmitter); 
+  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
+
+
+	//检测时间  EV6  发送要操作的存储单元地址
+  // 数据 或者 内存单元地址
   I2C_SendData(EEPROM_I2C,addr);
+while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+	//**********************************************************
+	
+	
+	
+	
+	
+	//第二次 起始位置传输
+	//2起始信号
+	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
+	
+	//检测 成功跳出
+	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
+  
+  //EV5被检测到  为发送设备地址
+  //发送    接收器 读方向
+	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Receiver); 
+  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED) == ERROR);
+	
+	while(numByteToRead)
+		{
+			
+	if(numByteToRead == 1)
+	{//最后一个字节  不应答
+	 I2C_AcknowledgeConfig(EEPROM_I2C,DISABLE);
+}
+	
+		
+	//检测时间  EV7  不发送要操作的存储单元地址
+  // 数据 或者 内存单元地址  ev7被检测到证明有新的有效数据
+	while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_RECEIVED ) == ERROR);
+	//接受 内容
 
-//检测EV8-2   
- while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTED) == ERROR);
+		*data = I2C_ReceiveData(EEPROM_I2C);
+     data++;
+		numByteToRead--;
+		}
+		//****************************************************************
+
+	
+	
+//////检测时间  EV8  //检测EV8-2   
+////// 最后一个字节数据 或者 内存单元地址
+////  I2C_SendData(EEPROM_I2C,addr);
+////  while(I2C_CheckEvent(EEPROM_I2C,I2C_EVENT_MASTER_BYTE_TRANSMITTED) == ERROR);
 
 
 //结束
+
   I2C_GenerateSTOP(EEPROM_I2C,ENABLE);
-
-
+//重新配置ACK
+	 I2C_AcknowledgeConfig(EEPROM_I2C,ENABLE);
 }
+
+
+
+
+
+
+
+
+
+
+//等待内部时序完成
+void EEPROM_WaitForWriteEnd(void)
+{
+	do
+	{
+	//1起始信号//检测 成功跳出
+	I2C_GenerateSTART(EEPROM_I2C,ENABLE);
+	
+		//成功会被置为 1
+	while(I2C_GetFlagStatus(EEPROM_I2C,I2C_FLAG_SB) == RESET);
+  
+  //EV5被检测到  为发送设备地址	  //发送  写方向
+	I2C_Send7bitAddress(EEPROM_I2C,EEPROM_ADDR,I2C_Direction_Transmitter); 
+	}
+		//EV6事件 发送地址  不满足就重新发送 重复上述循环 发送要操作的存储单元地址
+	while(I2C_GetFlagStatus(EEPROM_I2C,I2C_FLAG_ADDR) == RESET);
+
+
+	//结束清除信号  内部时序完成
+	 I2C_GenerateSTOP(EEPROM_I2C,ENABLE);
+}
+
+
+
 
 
 

@@ -3,12 +3,12 @@
 
 #include "stm32f10x.h"
 #include <stdio.h>
-
-
+#include <stdlib.h>
+#include "stm32f10x_i2c.h"
 #define STM32_I2C_OWN_ADDR   0x5f
 
-
-
+//EEPROM 设备地址  写地址
+#define EEPROM_ADDR  0xA0
 
 
 //PB6 -SCL        PB7-SDA
@@ -30,6 +30,10 @@
 #define EEPROM_I2C_SDA_GPIO_PIN         GPIO_Pin_7
 
 
-
+void I2C_EE_Config(void);
+void EEPROM_Byte_Write(uint8_t addr,uint8_t data);
+void EEPROM_Read(uint8_t addr,uint8_t *data,uint8_t numByteToRead);
+void EEPROM_Page_Write(uint8_t addr,uint8_t *data,uint8_t numByteToWrite);
+void EEPROM_WaitForWriteEnd(void);
 #endif
 
