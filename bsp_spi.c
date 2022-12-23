@@ -81,11 +81,71 @@ SPI_GPIO_Config();
 SPI_Mode_Config();
 }	
 
- 
+
+
+
+//80mins  fresh 写入读写校验
+//发送 并接收 一个字节
+uint8_t SPI_FLASH_Send_Byte(uint8_t data)
+{
+	
+	
+	SPITimeout = SPIT_FLAG_TIMEOUT ;
+	//检查并等待  向缓冲区写入数据
+	while(SPI_I2S_GetFlagStatus(FLASH_SPIx,SPI_I2S_FLAG_TXE)==RESET)
+	{
+	if((SPITimeout--) == 0) return SPI_TIMEOUT_UserCallback(0);
+	}
+	
+	//Tx缓存区空
+	SPI_I2S_SendData(FLASH_SPIx,data);
+
+	
+	SPITimeout = SPIT_FLAG_TIMEOUT ;
+  //RXNE  检测发送是否完成   RESET RX=非空
+	while(SPI_I2S_GetFlagStatus(FLASH_SPIx,SPI_I2S_FLAG_RXNE)==RESET);
+		{
+	if((SPITimeout--) == 0) return SPI_TIMEOUT_UserCallback(0);
+	}
+	
+	
+	//读取缓冲区 接收这个数据
+	return SPI_I2S_ReceiveData(FLASH_SPIx);
+
+}
 
 
 
 
+
+uint8_t  SPI_FLASH_Read_Byte(void)
+{
+return SPI_FLASH_Send_Byte(DUMMY);
+}
+
+
+//读取ID号
+uint32_t SPI_Read_ID(void)
+{
+	uint32_t flash_id;
+	
+	//片选使能 低电平使能
+	FLASH_SPI_CS_LOW;
+	SPI_FLASH_Send_Byte(READ_JEDEC_ID);
+
+	//读取三个字节
+	flash_id = SPI_FLASH_Send_Byte(DUMMY);
+	flash_id <<=8;
+	
+	flash_id |= SPI_FLASH_Send_Byte(DUMMY);
+	flash_id <<=8;
+	
+	flash_id |= SPI_FLASH_Send_Byte(DUMMY);
+	FLASH_SPI_CS_HIGH;
+	
+	return flash_id;
+	
+}
 
 
 
@@ -93,7 +153,7 @@ SPI_Mode_Config();
 //超时检测
 static uint32_t SPI_TIMEOUT_UserCallback(uint8_t errorCode)
 {
-FLASH_ERROR("I2C 等待超时！errorCode= %d",errorCode);
+FLASH_ERROR("SPI 等待超时！errorCode= %d",errorCode);
 
 	return 0;
 }
