@@ -150,6 +150,112 @@ uint32_t SPI_Read_ID(void)
 
 
 
+
+
+
+//35min往后
+//1.1擦除 FLASH 指定扇区
+void SPI_Erase_Sector(uint32_t addr)
+{
+	
+	SPI_Write_Enable();
+//片选使能 低电平使能
+	FLASH_SPI_CS_LOW;
+	SPI_FLASH_Send_Byte(ERASE_SECTOR);
+
+	//三个字节 发送地址    0x00 00 00 aa
+	SPI_FLASH_Send_Byte((addr>>16)&0xff);
+  SPI_FLASH_Send_Byte((addr>>8)&0xff);
+	SPI_FLASH_Send_Byte(addr);
+	FLASH_SPI_CS_HIGH;
+	
+	SPI_WaiteFowWriteEnd(); //等内部时序
+}
+ 
+
+
+
+//2.读取FLASH 内容
+void SPI_Read_Data(uint32_t addr,uint8_t *readBuff,uint32_t numByteToRead)
+{
+//片选使能 低电平使能
+	FLASH_SPI_CS_LOW;
+	SPI_FLASH_Send_Byte(READ_DATA);
+
+	//三个字节 发送地址    0x00 00 00 aa
+	SPI_FLASH_Send_Byte((addr>>16)&0xff);
+  SPI_FLASH_Send_Byte((addr>>8)&0xff);
+	SPI_FLASH_Send_Byte(addr&0xff);
+	
+	while(numByteToRead--)
+	{
+	*readBuff = SPI_FLASH_Send_Byte(DUMMY);
+	readBuff;
+	}
+	
+	FLASH_SPI_CS_HIGH;
+	
+	
+}
+ 
+
+
+
+//3.写入  Page Program 256 0x02 空扇区
+void SPI_Write_Data(uint32_t addr,uint8_t *writeBuff,uint32_t numByteToWrite)
+{
+		SPI_Write_Enable();
+
+//片选使能 低电平使能
+	FLASH_SPI_CS_LOW;
+	SPI_FLASH_Send_Byte(WRIYE_DATA);
+
+	//三个字节 发送地址    0x00 00 00 aa
+	SPI_FLASH_Send_Byte((addr>>16)&0xff);
+  SPI_FLASH_Send_Byte((addr>>8)&0xff);
+	SPI_FLASH_Send_Byte(addr&0xff);
+	
+	while(numByteToWrite--)
+	{
+ SPI_FLASH_Send_Byte(*writeBuff);
+	writeBuff++;
+	}
+	
+	FLASH_SPI_CS_HIGH;
+	SPI_WaiteFowWriteEnd();//等待时序命令
+	
+}
+
+
+
+
+//1.3FLASH 使能
+
+void SPI_Write_Enable(void)
+{
+	FLASH_SPI_CS_LOW;
+  SPI_FLASH_Send_Byte(WRITE_ENABLE);
+	FLASH_SPI_CS_HIGH;	
+}
+
+//1.2等待内部时序操作完成
+void SPI_WaiteFowWriteEnd(void)
+{
+	uint8_t status_reg=0;  //状态寄存器
+	//片选使能 低电平使能
+	FLASH_SPI_CS_LOW;
+	SPI_FLASH_Send_Byte(READ_STATUS);
+
+	do{
+	//读取 看busy位 是否忙碌
+	status_reg = SPI_FLASH_Send_Byte(DUMMY);
+	}
+	while((status_reg &0x01) == 1); //忙
+	
+	FLASH_SPI_CS_HIGH;
+
+}
+
 //超时检测
 static uint32_t SPI_TIMEOUT_UserCallback(uint8_t errorCode)
 {
